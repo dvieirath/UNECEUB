@@ -6,9 +6,10 @@ import { View, StyleSheet, StatusBar } from 'react-native';
 import SplashScreen from './splash_screen.tsx';
 import LoginScreen from './login_screen.tsx';
 import HomeScreen from './home_screen.tsx';
+import RegistrationScreen from './registration_screen.tsx'; // NOVO IMPORT
 
 // Define os estados possíveis da aplicação
-type AppState = 'splash' | 'login' | 'home';
+type AppState = 'splash' | 'login' | 'home' | 'register'; // NOVO ESTADO 'register'
 
 const App: React.FC = () => {
   // Estado inicial é 'splash'
@@ -27,6 +28,8 @@ const App: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // --- Funções de Navegação ---
+
   // Função chamada pelo LoginScreen após sucesso
   const handleLoginSuccess = () => {
     setAppState('home');
@@ -36,22 +39,45 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setAppState('login');
   };
+  
+  // Função para ir para a tela de Cadastro
+  const handleNavigateToRegister = () => {
+    setAppState('register');
+  };
+
+  // Função chamada pelo RegistrationScreen após sucesso (volta para Login)
+  const handleRegistrationSuccess = () => {
+    setAppState('login');
+  };
+  
+  // --- Renderização da Tela ---
 
   const renderScreen = () => {
     if (appState === 'splash') {
       return <SplashScreen isLoading={splashLoading} />;
     } else if (appState === 'login') {
-      return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+      return (
+        <LoginScreen 
+          onLoginSuccess={handleLoginSuccess} 
+          onNavigateToRegister={handleNavigateToRegister} // NOVO PROP
+        />
+      );
+    } else if (appState === 'register') {
+      return (
+        <RegistrationScreen 
+          onRegistrationSuccess={handleRegistrationSuccess} // NOVO COMPONENTE E PROP
+        />
+      );
     } else if (appState === 'home') {
       return <HomeScreen onLogout={handleLogout} />;
     }
-    return null; // Retorna null para estados inesperados
+    return null; 
   };
 
   return (
     <View style={styles.container}>
       {/* A barra de status será definida pela tela atual */}
-      <StatusBar barStyle={appState === 'splash' || appState === 'login' ? 'dark-content' : 'dark-content'} />
+      <StatusBar barStyle={appState === 'splash' || appState === 'login' || appState === 'register' ? 'dark-content' : 'dark-content'} />
       {renderScreen()}
     </View>
   );

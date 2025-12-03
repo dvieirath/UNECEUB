@@ -10,11 +10,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Image
+  // Importando AsyncStorage ou SecureStore para armazenar o token
+  // IMPORTANTE: Para ambiente Expo, instale e use expo-secure-store.
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Sugestão para React Native/Expo para tokens
 
 // Importa ícones da biblioteca Expo
 import { MaterialIcons } from '@expo/vector-icons'; 
+
+// URL DO SEU BACKEND: SUBSTITUA 'localhost' PELO IP REAL DA SUA MÁQUINA
+const API_BASE_URL = 'http://192.168.56.1:3000/api'; 
 
 // =========================================================================
 // Definição da Paleta de Cores da UneCEUB
@@ -31,13 +36,14 @@ const colors = {
 };
 
 interface LoginScreenProps {
-  onLoginSuccess: () => void; // Propriedade obrigatória para simular a navegação
+  onLoginSuccess: () => void; 
+  onNavigateToRegister: () => void; // Propriedade para ir para o Cadastro
 }
 
 // =========================================================================
-// Componente principal da tela de Login (agora com suporte à navegação)
+// Componente principal da tela de Login (com chamada real ao Backend)
 // =========================================================================
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onNavigateToRegister }) => {
   const [identifier, setIdentifier] = useState<string>(''); // CPF
   const [password, setPassword] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -52,7 +58,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
 
     // 1. Validação de CPF (11 dígitos)
-    const rawCpf = identifier.replace(/\D/g, ''); // Remove caracteres não numéricos
+    const rawCpf = identifier.replace(/\D/g, ''); 
 
     if (rawCpf.length !== 11) {
       setError('O CPF deve conter exatamente 11 dígitos.');
@@ -61,19 +67,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
     setIsLoading(true);
     
-    // Simulação de Login
+    // --- CHAMADA AO BACKEND (LOGIN) ---
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000)); 
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cpf: rawCpf,
+          password: password,
+        }),
+      });
 
-      if (rawCpf === '12345678901' && password === 'senha123') { 
-        // CHAMADA DA FUNÇÃO DE NAVEGAÇÃO APÓS SUCESSO
+      const data = await response.json();
+
+      if (response.ok) {
+        // Login bem-sucedido: o backend retornou o JWT
+        const token = data.token;
+        
+        // Armazena o token para uso futuro (MUITO IMPORTANTE!)
+        // Em um projeto real, use expo-secure-store para segurança máxima.
+        await AsyncStorage.setItem('userToken', token);
+        
+        // Navega para a tela Home
         onLoginSuccess();
       } else {
-        // Mensagem genérica para CPF ou Senha inválidos
-        setError('CPF ou Senha inválidos.');
+        // Erro de Autenticação (401 - CPF ou Senha inválidos) ou outro erro do servidor
+        setError(data.message || 'Falha no login. Verifique suas credenciais.');
       }
-    } catch (apiError) {
-      setError('Erro de conexão. Verifique sua internet.');
+      
+    } catch (e) {
+      console.error("Erro de Rede:", e);
+      // Erro de conexão (servidor backend não está rodando ou URL incorreta)
+      setError('Não foi possível conectar ao servidor. Verifique o backend.');
     } finally {
       setIsLoading(false);
     }
@@ -154,6 +181,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               </Text>
             )}
           </TouchableOpacity>
+        
+          {/* Link Cadastrar-se */}
+          <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>Não tem conta?</Text>
+              <TouchableOpacity onPress={onNavigateToRegister} style={styles.registerButton}>
+                  <Text style={styles.registerButtonText}>Cadastre-se</Text>
+              </TouchableOpacity>
+          </View>
+          
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -249,6 +285,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
+    marginBottom: 20, // Espaço antes do link de cadastro
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -258,6 +295,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  // ESTILOS PARA O LINK DE CADASTRO
+  registerContainer: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    marginTop: 10,
+  },
+  registerText: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  registerButton: {
+    marginLeft: 5,
+  },
+  registerButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.secondary,
+  }
 });
 
 export default LoginScreen;
